@@ -1,4 +1,3 @@
-import java.lang.Object;
 
 public class HMM {
     static Cell currentCell;
@@ -11,11 +10,17 @@ public class HMM {
         //1. Sensing: [-, -, -, O]
         sense(grid, '-', '-', '-', 'O');
         //2. Moving northward
+        move(grid, 'N');
         //3. Sensing: [-, O, -, -]
+        sense(grid, '-', 'O', '-', '-');
         //4. Moving eastward
+        move(grid, 'E');
         //5. Sensing: [-. O. -. -]
+        sense(grid, '-', 'O', '-', '-');
         //6. Moving eastward
+        move(grid, 'E');
         //7. Sensing: [-, -, O, -]
+        sense(grid, '-', '-', 'O', '-');
 
     }
 
@@ -139,143 +144,153 @@ public class HMM {
     }
 
 
-
-    //Sensing
-    public static void old_sense(Cell[][] grid, char W, char N, char E, char S)
+    public static void move(Cell[][] grid, char direction)
     {
-        boolean westGivenObstacle;
-        boolean northGivenObstacle;
-        boolean eastGivenObstacle; 
-        boolean southGivenObstacle;
-       
-        double[][] probability = new double[2][2];
-        //0 - not obstacle
-        //1 - obstacle
-        probability[1][1] = 0.85; //P(O2|O1) = 0.85
-        probability[0][1] = 0.15; //P(!O2|O1) = 0.15
-        probability[1][0] = 0.10; //P(O2|!O1) = 0.10
-        probability[0][0] = 0.90; //P(!O2|!O1) = 0.90
+        if (direction == 'N')
+            moveNorth(grid);
+        else if (direction == 'E')
+            moveEast(grid);
+        else
+            System.out.println("YOU HAVE GOOFED! Your robot is trying to move in an invalid direction");
 
-        double result = 1;
-        
+    }
+
+
+    
+    //Moving North
+    public static void moveNorth(Cell[][] grid)
+    {
+        //Moving North (Robot Facing North)
+        //You can get to the current spot by
+            //1. Coming from left side (ONLY when left side is an open square)
+                //Drift (10%)
+            //2. Coming from left side (ONLY when there is a blockade in left side)
+                //Bounce back (10%)
+            //3. Coming from right side (ONLY when right side is an open square)
+                //Drift (10%)
+            //4. Coming from right side (ONLY when there is a blockade in right side)
+                //Bounce back (10%)
+            //5. Coming from bottom side (ONLY when bottom side is an open square)
+                //Successful move (80%)
+            //6. Coming from current spot (ONLY when there is a blockade in top side)
+                //Bounce back (10%)
+        //Assign the calculated value to current cell
+            double movementProbability = 0.0;
+            double tempGrid[][] = new double[6][7];
+            for(int row = 0; row < grid.length; row++)
+            {
+                for(int col = 0; col < grid[row].length; col++)
+                {
+                    
+                    if ((col-1 >= 0) && !grid[row][col-1].getBoundary()) //there is a cell on the left & it is not a obstacle, coming right to current
+                    {
+                        movementProbability += (grid[row][col-1].getValue() * 0.1);
+                    }
+                    else //else it is a blocade or boundary so drift-bounceback
+                    {
+                        movementProbability += (grid[row][col].getValue() * 0.1);
+                    }
+                    if ((col+1 <= 6) && !grid[row][col+1].getBoundary()) //there is a cell on the right & it is not a obstacle, coming left to current
+                    {
+                        movementProbability += (grid[row][col+1].getValue() * 0.1);
+                    }
+                    else //else it is a blocade or boundary so drift-bounceback
+                    {
+                        movementProbability += (grid[row][col].getValue() * 0.1);
+                    }
+                    if ((row+1 <= 5) && !grid[row+1][col].getBoundary()) //there is a cell on the bottom & it is not a obstacle, coming bottom to current
+                    {
+                        movementProbability += (grid[row + 1][col].getValue() * 0.8);
+                    }
+                    if ((row-1 < 0) || grid[row-1][col].getBoundary()) //current spot to top spot, but top spot is obstacle so you bounce back
+                    {
+                        movementProbability += (grid[row][col].getValue() * 0.8);
+                    } 
+                    
+                    tempGrid[row][col] = movementProbability;
+                    movementProbability = 0.0;
+                }
+            }
+
+            copyToGrid(tempGrid, grid);
+            
+            //print
+            printGrid(grid);
+    }
+
+    
+    //Moving East
+    public static void moveEast(Cell[][] grid)
+    {
+        //Moving North (Robot Facing North)
+        //You can get to the current spot by
+            //1. Coming from left side (ONLY when left side is an open square)
+                //Drift (10%)
+            //2. Coming from left side (ONLY when there is a blockade in left side)
+                //Bounce back (10%)
+            //3. Coming from right side (ONLY when right side is an open square)
+                //Drift (10%)
+            //4. Coming from right side (ONLY when there is a blockade in right side)
+                //Bounce back (10%)
+            //5. Coming from bottom side (ONLY when bottom side is an open square)
+                //Successful move (80%)
+            //6. Coming from current spot (ONLY when there is a blockade in top side)
+                //Bounce back (10%)
+        //Assign the calculated value to current cell
+        double movementProbability = 0.0;
+        double tempGrid[][] = new double[6][7];
         for(int row = 0; row < grid.length; row++)
         {
             for(int col = 0; col < grid[row].length; col++)
             {
-                    //Checks if westGivenObstacle(true) or westGivenNotObstacle(false)
-                    westGivenObstacle = (col-1 < 0) ? true : (grid[row][col-1].getBoundary() ? true: false);
-                    //Checks if northGivenObstacle(true) or northGivenNotObstacle(false)
-                    northGivenObstacle = (row-1 < 0) ? true : (grid[row][row-1].getBoundary() ? true: false);
-                    //Checks if eastGivenObstacle(true) or eastGivenNotObstacle(false)
-                    eastGivenObstacle = (col+1 > 6) ? true : (grid[row][col+1].getBoundary() ? true: false);
-                    //Checks if southGivenObstacle(true) or southGivenNotObstacle(false)
-                    southGivenObstacle = (row+1 > 5) ? true : (grid[row][row+1].getBoundary() ? true: false);
-                    
-                    //Check West
-                    if (westGivenObstacle)  //given an obstacle
-                    {
-                        if (W == 'O')   //If obstacle given obstacle
-                        {
-                            result *= probability[1][1];
-                        }
-                        else if (W == '-')  //If not obstacle given obstacle
-                        {
-                            result *= probability[0][1];
-                        }
-                    }
-                    else {
-                        if (W == 'O')   //If obstacle given not obstacle
-                        {
-                            result *= probability[1][0];
-                        }
-                        else if (W == '-')  //If not obstacle given not obstacle
-                        {
-                            result *= probability[0][0];
-                        }
-                    }
-                    //Check North
-                    if (northGivenObstacle)
-                    {
-                        if (N == 'O')   //If obstacle given obstacle
-                        {
-                            result *= probability[1][1];
-                        }
-                        else if (N == '-')  //If not obstacle given obstacle
-                        {
-                            result *= probability[0][1];
-                        }
-                    }
-                    else {
-                        if (N == 'O')   //If obstacle given not obstacle
-                        {
-                            result *= probability[1][0];
-                        }
-                        else if (N == '-')  //If not obstacle given not obstacle
-                        {
-                            result *= probability[0][0];
-                        }
-                    }
-                    //Check East
-                    if (eastGivenObstacle)
-                    {
-                        if (E == 'O')   //If obstacle given obstacle
-                        {
-                            result *= probability[1][1];
-                        }
-                        else if (E == '-')  //If not obstacle given obstacle
-                        {
-                            result *= probability[0][1];
-                        }
-                    }
-                    else {
-                        if (E == 'O')   //If obstacle given not obstacle
-                        {
-                            result *= probability[1][0];
-                        }
-                        else if (E == '-')  //If not obstacle given not obstacle
-                        {
-                            result *= probability[0][0];
-                        }
-                    }
-                    //Check South
-                    if (southGivenObstacle)
-                    {
-                        if (S == 'O')   //If obstacle given obstacle
-                        {
-                            result *= probability[1][1];
-                        }
-                        else if (S == '-')  //If not obstacle given obstacle
-                        {
-                            result *= probability[0][1];
-                        }
-                    }
-                    else {
-                        if (S == 'O')   //If obstacle given not obstacle
-                        {
-                            result *= probability[1][0];
-                        }
-                        else if (S == '-')  //If not obstacle given not obstacle
-                        {
-                            result *= probability[0][0];
-                        }
-                    }
-                grid[row][col].setValue(result * grid[row][col].getValue());    
+                
+                if ((row-1 >= 0) && !grid[row-1][col].getBoundary())
+                {
+                    movementProbability += (grid[row-1][col].getValue() * 0.1);
+                } 
+                else 
+                {
+                    movementProbability += (grid[row][col].getValue() * 0.1);
+                }
+                if ((row+1 <= 5) && !grid[row+1][col].getBoundary())
+                {
+                    movementProbability += (grid[row+1][col].getValue() * 0.1);
+                } 
+                else 
+                {
+                    movementProbability += (grid[row][col].getValue() * 0.1);
+                }
+                if ((col-1 >= 0) && !grid[row][col-1].getBoundary())
+                {
+                    movementProbability += (grid[row][col-1].getValue() * 0.8);
+                }
+                if ((col+1 > 6) || grid[row][col+1].getBoundary())
+                {
+                    movementProbability += (grid[row][col].getValue() * 0.8);
+                }
+                
+                tempGrid[row][col] = movementProbability;    
+                movementProbability = 0;   
             }
-
         }
-        
-        
 
-        
+        copyToGrid(tempGrid, grid);
+
+        //print
+        printGrid(grid);   
     }
     
-    
-    //Moving
-    public static void move(char direction)
+    public static void copyToGrid(double tempGrid[][], Cell[][]grid)
     {
-        
+        for(int row = 0; row < grid.length; row++)
+        {
+            for(int col = 0; col < grid[row].length; col++)
+            {
+                grid[row][col].setValue(tempGrid[row][col]);
+            }
+        }
     }
-    
+
 
     public static void loadGrid(Cell[][] grid)
     {
@@ -334,5 +349,7 @@ public class HMM {
             }
             System.out.println();
         }
+        System.out.println();
+        System.out.println();
     }
 }
