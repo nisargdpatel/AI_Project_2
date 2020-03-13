@@ -1,3 +1,4 @@
+import java.lang.Object;
 
 public class HMM {
     static Cell currentCell;
@@ -8,7 +9,7 @@ public class HMM {
         
         //Algorithm
         //1. Sensing: [-, -, -, O]
-        sense(grid, '-', '-', 'O', '-');
+        sense(grid, '-', '-', '-', 'O');
         //2. Moving northward
         //3. Sensing: [-, O, -, -]
         //4. Moving eastward
@@ -16,13 +17,131 @@ public class HMM {
         //6. Moving eastward
         //7. Sensing: [-, -, O, -]
 
-
-        printGrid(grid);
-
     }
 
-    //Sensing
     public static void sense(Cell[][] grid, char W, char N, char E, char S)
+    {
+        double total= 0.0;
+
+        //Step 1
+        for(int row = 0; row < grid.length; row++)
+        {
+            for(int col = 0; col < grid[row].length; col++)
+            {
+                double value = ((grid[row][col].getValue()/100) * sensor(grid, row, col, W, N, E, S));
+                grid[row][col].setValue(value);
+            }
+        }
+
+        //Step 2
+        for(int row = 0; row < grid.length; row++)
+        {
+            for(int col = 0; col < grid[row].length; col++)
+            {
+                total += grid[row][col].getValue();
+            }
+        }
+
+        //Step 3
+        for(int row = 0; row < grid.length; row++)
+        {
+            for(int col = 0; col < grid[row].length; col++)
+            {
+                grid[row][col].setValue((grid[row][col].getValue() / total) * 100);
+            }
+        }
+
+        //Step 4 - Print
+        printGrid(grid);
+    }
+
+    //Sensor
+    public static double sensor(Cell[][] grid, int row, int col, char W, char N, char E, char S)
+    {
+        double result = 1.0;
+
+        if (grid[row][col].getBoundary())
+        {
+            return 0.0;
+        }
+        else if ((col-1<0) || grid[row][col-1].getBoundary())  //Given West Obstacle
+        {
+            if (W == '-')   
+            {
+                result *= 0.15;     //If P(!O|O)
+            } else {        
+                result *= 0.85;     //If P(O|O)
+            }
+        } else {    //Given West Not Obstacle
+            if (W == '-')   
+            {
+                result *= 0.90;     //If P(!O|!O)
+            } else {        
+                result *= 0.10;     //If P(O|!O)
+            }
+        }
+        
+        
+        if ((row-1<0) || grid[row-1][col].getBoundary())  //Given North Obstacle
+        {
+            if (N == '-')
+            {
+                result *= 0.15;     //If P(!O|O)
+            } else {
+                result *= 0.85;      //If P(O|O)
+            }
+        } else {    //Given North Not Obstacle
+            if (N == '-')
+            {
+                result *= 0.90;     //If P(!O|!O)
+            } else {
+                    result *= 0.10; //If P(O|!O)
+            }
+        }
+
+
+        if ((col+1>6) || grid[row][col+1].getBoundary())  //Given East Obstacle
+        {
+            if (E == '-')
+            {
+                result *= 0.15; //If P(!O|O)
+            } else {
+                result *= 0.85; //If P(O|O)
+            }
+        } else {    //Given East Not Obstacle
+            if (E == '-')
+            {
+                result *= 0.90; //If P(!O|!O)
+            } else {
+                result *= 0.10; //If P(O|!O)
+            }
+        }
+        
+        
+        if ((row+1>5) || grid[row+1][col].getBoundary())  //Given South Obstacle
+        {
+            if (S == '-')
+            {
+                result *= 0.15; //If P(!O|O)
+            } else {
+                result *= 0.85; //If P(O|O)
+            }
+        } else {    //Given South Not Obstacle
+            if (S == '-')
+            {
+                result *= 0.90; //If P(!O|!O)
+            } else {
+                result *= 0.10; //If P(O|!O)
+            }
+        }
+
+        return result;
+    }
+
+
+
+    //Sensing
+    public static void old_sense(Cell[][] grid, char W, char N, char E, char S)
     {
         boolean westGivenObstacle;
         boolean northGivenObstacle;
@@ -172,6 +291,7 @@ public class HMM {
                 grid[row][col].setValue(3.23);
             }
         }
+        
         //Load cells
         grid[3][1].setBoundary(true);
         grid[3][2].setBoundary(true);
@@ -184,6 +304,19 @@ public class HMM {
         grid[3][5].setBoundary(true);
         grid[4][5].setBoundary(true);
         grid[4][4].setBoundary(true);
+        
+        //Boundary values to 0
+        grid[3][1].setValue(0.0);
+        grid[3][2].setValue(0.0);
+        grid[2][2].setValue(0.0);
+        grid[1][2].setValue(0.0);
+        grid[1][3].setValue(0.0);
+        grid[1][4].setValue(0.0);
+        grid[1][5].setValue(0.0);
+        grid[2][5].setValue(0.0);
+        grid[3][5].setValue(0.0);
+        grid[4][5].setValue(0.0);
+        grid[4][4].setValue(0.0);
     }
 
     public static void printGrid(Cell[][] grid)
@@ -194,11 +327,10 @@ public class HMM {
             {
                 if (grid[row][col].getBoundary())
                 {
-                    System.out.print("XXXX ");
+                    System.out.printf(" %5s ", "XXXX");
                 } else {
-                    System.out.print(grid[row][col].getValue() + " "); 
-                }
-               
+                    System.out.printf(" %5.2f ", grid[row][col].getValue()); 
+                }   
             }
             System.out.println();
         }
